@@ -105,8 +105,14 @@ public class CommandeService {
             throw new IllegalStateException("Impossible de modifier une commande déjà expédiée.");
         }
 
-        // 3. Mise à jour du compteur "Unités commandées" (annulation de la réservation)
+        // 3. Mise à jour du compteur "Unités commandées"
         medicament.setUnitesCommandees(medicament.getUnitesCommandees() - ligne.getQuantite());
+
+        // --- CORRECTION CRUCIALE ICI ---
+        // On coupe le lien Java : on enlève la ligne de la liste de la commande
+        // Sinon Hibernate croit que la ligne doit toujours exister car la commande la contient encore
+        commande.getLignes().remove(ligne);
+        // -------------------------------
 
         // 4. Suppression
         ligneDao.delete(ligne);

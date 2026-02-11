@@ -79,35 +79,40 @@ class CommandeServiceTest {
 
     // --- Tests supprimerLigne ---
 
+    // N'oublie pas cet attribut en haut de ta classe de test !
+    @Autowired
+    private jakarta.persistence.EntityManager entityManager;
     @Test
     void supprimerLigne_CasNominal() {
-        // Dans la commande 99998, il y a une ligne pour le médicament 98 (qté 16)
-        // Il faut d'abord récupérer l'ID de cette ligne
+        // 1. Préparation : On récupère la commande de test 99998
         Commande c = service.getCommande(99998);
-        Ligne ligneASupprimer = c.getLignes().get(0); // On prend la première ligne
+        Ligne ligneASupprimer = c.getLignes().get(0);
         int quantiteLigne = ligneASupprimer.getQuantite();
         int medRef = ligneASupprimer.getMedicament().getReference();
 
-        // Etat avant
+        // On mémorise l'état avant suppression
         Medicament mAvant = medicamentDao.findById(medRef).orElseThrow();
         int commandeesAvant = mAvant.getUnitesCommandees();
 
-        // Action
+        // 2. Action : On appelle le SERVICE (c'est lui qui utilise ligneDao)
         service.supprimerLigne(ligneASupprimer.getId());
 
-        // Vérif : ligne n'existe plus (on recharge la commande)
+        // --- GESTION DU CACHE DE TEST ---
+        entityManager.flush(); // Force l'envoi de la suppression à la BDD
+        entityManager.clear(); // Vide la mémoire pour forcer la relecture
+        // --------------------------------
+
+        // 3. Vérifications
+        // On recharge la commande depuis la base "propre"
         c = service.getCommande(99998);
-        assertTrue(c.getLignes().isEmpty());
 
-        // Vérif : compteur médicament décrémenté
-        // CORRECTION : Espace entre Medicament et mApres
+        // La liste doit être vide
+        assertTrue(c.getLignes().isEmpty(), "La liste des lignes devrait être vide après suppression");
+
+        // Le compteur de médicament doit avoir diminué
         Medicament mApres = medicamentDao.findById(medRef).orElseThrow();
-
-        // CORRECTION : On utilise juste 'mApres', pas 'Medicament mApres'
         assertEquals(commandeesAvant - quantiteLigne, mApres.getUnitesCommandees());
     }
-
-    // --- Tests enregistreExpedition ---
 
     @Test
     void enregistreExpedition_CasNominal() {
